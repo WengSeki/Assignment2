@@ -1,0 +1,115 @@
+---
+title: "Assignment 2"
+format: html
+editor: visual
+---
+
+##Question 1
+
+```{r}
+library(foreach)
+library(doParallel)
+
+cl <- makeCluster(detectCores()-1)
+registerDoParallel(cl)
+
+result <- foreach(i = 1:100, .combine = rbind) %dopar% {
+  rsample <- rexp(100, rate = 1)
+  mean <- mean(rsample)
+  var <- var(rsample)
+  result <- cbind(mean, var)
+} 
+stopCluster(cl)
+print(result)
+```
+
+##Question 2
+
+```{r}
+library(MASS)
+gal <- galaxies
+
+
+B <-  1000
+cl <- makeCluster(detectCores()-1)
+registerDoParallel(cl)
+
+#use foreach and dopar
+system.time({
+parallel_med <- foreach(i = 1:B, .combine = c) %dopar%{
+  median(sample(gal, replace = T))
+}
+})
+
+#without use foreach
+system.time({
+serial_med <- replicate(B,median(sample(gal, replace = T)))
+})
+
+stopCluster(cl)
+```
+
+##Question 3
+
+```{r}
+set.seed(3)
+bt_ci <- function(x, n){
+  bt_med <- replicate(n, median(sample(x, length(x), replace = T)))
+  pci <- quantile(bt_med, c(0.025, 0.975))
+  return(pci)
+}
+
+c2 <- makeCluster(detectCores()-1)
+registerDoParallel(c2)
+
+coverage <- foreach(i = 1:1000, .combine = c)%dopar%{
+  sample <- rexp(50, rate = 1)
+  ci <- bt_ci(sample, 1000)
+  true_med <- log(2)
+  ci[1]<=true_med && true_med<=ci[2]
+}
+stopCluster(c2)
+
+mean(coverage)
+```
+
+##Question 4
+
+```{r}
+set.seed(1234)
+
+it <- iterators::irnorm(3, count = 5)
+
+max_it <- foreach(i=it, .combine = c)%do%{
+  max(i)
+}
+
+print(max_it)
+```
+
+##Question 5
+
+```{r}
+library(parallel)
+cl <- makeCluster(detectCores() - 1)
+
+system.time({
+  parLapply(cl, 1:3, function(i) max(rnorm(5)))
+})
+
+stopCluster(cl)
+
+cl <- makeCluster(detectCores() - 1)
+
+registerDoParallel(cl)
+system.time({
+  foreach(i = 1:3) %dopar% max(rnorm(5))
+})
+
+stopCluster(cl)
+
+system.time({
+  replicate(3, max(rnorm(5)))
+})
+
+```
